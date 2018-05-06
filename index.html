@@ -164,6 +164,7 @@
         // createjs.Ticker.interval = 50;
         createjs.Ticker.addEventListener("tick", tick);
         createjs.Touch.enable(stage);
+        stage.preventSelection = false;
 
         canvas.addEventListener("mousewheel", MouseWheelHandler, false);
         canvas.addEventListener("DOMMouseScroll", MouseWheelHandler, false);
