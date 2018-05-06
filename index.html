@@ -1,0 +1,297 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mike Chambers" />
+    <meta name="keywords" content="" />
+    <meta name="description" content="" />
+    <meta name="copyright" content="Mike Chambers" />
+    <meta name="robots" content="index,follow" />
+    <title>TITLE</title>
+    <style>
+    * {
+        padding: 0;
+        margin: 0;
+    }
+
+    #stageCanvas {
+        background-color: #333333;
+    }
+
+    #clock {
+        font-size: 36px;
+    }
+
+    .train_types {
+        float: right;
+        list-style: none;
+    }
+
+    #purple,
+    #orange,
+    #yellow,
+    #red,
+    #green,
+    #blue {
+        width: 15px;
+        height: 15px;
+        display: inline-block;
+    }
+
+    #blue {
+        background: #0c69ff;
+    }
+
+    #green {
+        background: #3daf00;
+    }
+
+    #red {
+        background: #af0000;
+    }
+
+    #yellow {
+        background: #d1d120;
+    }
+
+    #orange {
+        background: #ff8c00;
+    }
+
+    #purple {
+        background: #a90ef7;
+    }
+    input#time_position {
+        width: 450px;
+    }
+    input#scaling {
+        width: 225px;
+        margin-left: 107px;
+    }
+    </style>
+    <script src="jquery.js"></script>
+    <script src="createjs.js"></script>
+    <script src="data_points.js"></script>
+    <script src="data_edges.js"></script>
+    <script src="data_trains.js"></script>
+    <script src="loader.js"></script>
+    <script id="editable">
+    var canvas;
+    var stage;
+    var shape;
+    radius = 30;
+    var zoom;
+    var startTime = new Date();
+    var textInstances = [];
+    var trainInstances = [];
+    var time_scaling = 0;
+    var elapsed = 0;
+
+
+
+    function MouseWheelHandler(e) {
+        if (Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail))) > 0)
+            zoom = 1.1;
+        else
+            zoom = 1 / 1.1;
+        var local = stage.globalToLocal(stage.mouseX, stage.mouseY);
+        stage.regX = local.x;
+        stage.regY = local.y;
+        stage.x = stage.mouseX;
+        stage.y = stage.mouseY;
+        stage.scaleX = stage.scaleY *= zoom;
+
+        stage.update();
+
+    }
+
+    function msToTime(duration) {
+        var milliseconds = parseInt((duration % 1000) / 100),
+            seconds = parseInt((duration / 1000) % 60),
+            minutes = parseInt((duration / (1000 * 60)) % 60),
+            hours = parseInt((duration / (1000 * 60 * 60)) % 24);
+
+        hours = (hours < 10) ? "0" + hours : hours;
+        minutes = (minutes < 10) ? "0" + minutes : minutes;
+        seconds = (seconds < 10) ? "0" + seconds : seconds;
+
+        return hours + ":" + minutes + ":" + seconds + ":" + milliseconds;
+    }
+
+    function init() {
+        // create a new stage and point it at our canvas:
+        canvas = document.getElementById("testCanvas");
+        clock = document.getElementById("clock");
+        fps = document.getElementById("fps");
+
+        // time_position = document.getElementById("time_position");
+
+        canvas.width = window.innerWidth - 100;
+        canvas.height = window.innerHeight - 250;
+        stage = new createjs.Stage(canvas);
+
+        load_edges(data_edges, stage);
+        load_points(data_points, stage);
+        load_trains(trainInstances, data_train, stage);
+        // trainInstances.push(
+        //     addTrain(
+        //         data_train[0].id,
+        //         3957,
+        //         620,
+        //         data_train[0].size,
+        //         data_train[0].type,
+        //         data_train[0].path,
+        //         stage
+        //     )
+        // );
+
+        // console.log(trainInstances[0])
+        // console.log(data_train[0].path[0].x1)
+        // console.log(data_train[0].path[0].y1)
+        // trainInstances.push(addTrain("1", 150, 50, 15, 6, [{ x1: 150, y1: 50, x2: 250, y2: 50, velocity: 1 }, { x1: 250, y1: 50, x2: 150, y2: 50, velocity: 2 }], stage));
+
+        // add a text object to output the current FPS:
+        // fpsLabel = new createjs.Text("-- fps", "bold 18px Arial", "#000");
+        // stage.addChild(fpsLabel);
+        // fpsLabel.x = 10;
+        // fpsLabel.y = 20;
+
+        // start the tick and point it at the window so we can do some work before updating the stage:
+        createjs.Ticker.timingMode = createjs.Ticker.RAF;
+        // createjs.Ticker.interval = 25;
+        // createjs.Ticker.framerate = 40;
+        // createjs.Ticker.interval = 50;
+        createjs.Ticker.addEventListener("tick", tick);
+
+        canvas.addEventListener("mousewheel", MouseWheelHandler, false);
+        canvas.addEventListener("DOMMouseScroll", MouseWheelHandler, false);
+        stage.addEventListener("stagemousedown", function(e) {
+            var offset = { x: stage.x - e.stageX, y: stage.y - e.stageY };
+            stage.addEventListener("stagemousemove", function(ev) {
+                stage.x = ev.stageX + offset.x;
+                stage.y = ev.stageY + offset.y;
+                stage.update();
+            });
+            stage.addEventListener("stagemouseup", function() {
+                stage.removeAllEventListeners("stagemousemove");
+            });
+        });
+        // toggleCache(true);
+
+        // var interval = window.setInterval(function() {
+            
+        //     seconds_elapsed += parseInt($("#scaling").val());
+
+        // }, 1000);
+    }
+
+    function tick(event) {
+        // time_scaling =  parseFloat($("#scaling").val());
+        scaling = parseInt($("#scaling").val());
+        elapsed = parseInt($("#time_position").val()) + 1000/createjs.Ticker.interval * 
+            parseInt($("#scaling").val());
+        $("#time_position").val(elapsed);
+
+        // createjs.Ticker.interval = 1000 / parseInt($("#scaling").val());
+        var l = trainInstances.length;
+        // // iterate through all the children and move them according to their velocity:
+        for (var i = 0; i < l; i++) {
+            var train_shape = stage.getChildAt(trainInstances[i].child_pos);
+            trainInstances[i].move(train_shape, elapsed, scaling);
+        }
+
+
+        clock.innerHTML = msToTime(elapsed);
+        fps.innerHTML = Math.round(createjs.Ticker.getMeasuredFPS()) + " fps";
+
+        // $("#time_position").val(addTime($("#time_position").val(), $("#scaling").val()));
+        // time_position.value = addTime(time_position.value, scaling);
+        
+
+        stage.update(event);
+    }
+
+    function toggleCache(value) {
+        // iterate all the children except the fpsLabel, and set up the cache:
+        var l = stage.numChildren - 1;
+        for (var i = 0; i < l; i++) {
+            var shape = stage.getChildAt(i);
+            if (value) {
+                shape.cache(-radius, -radius, radius * 2, radius * 2);
+            } else {
+                shape.uncache();
+            }
+        }
+    }
+
+
+    function toggleLength(value) {
+        if (value) {
+            for (var i = data_edges.length - 1; i >= 0; i--) {
+                var tmp = new createjs.Text(data_edges[i].distance, "bold 18px Arial", "#000");
+                if (data_edges[i].x1 - data_edges[i].x2 > 0) {
+                    tmp.x = (data_edges[i].x1 + data_edges[i].x2) / 2;
+                    tmp.y = (data_edges[i].y1 + data_edges[i].y2) / 2;
+                    textInstances.push(tmp);
+                    stage.addChild(tmp);
+                }
+            }
+        } else {
+            for (var i = 0; i < textInstances.length; i++) {
+                stage.removeChild(textInstances[i]);
+            }
+        }
+    }
+    function redraw(time) {
+        var l = trainInstances.length;
+        for (var i = 0; i < l; i++) {
+            var train_shape = stage.getChildAt(trainInstances[i].child_pos);
+            train_shape.x = -1000000000
+            train_shape.y = -1000000000
+        }
+    }
+    </script>
+    <style>
+    .controls {
+        padding: 10px;
+    }
+    </style>
+</head>
+
+<body onload="init();">
+    <div class="controls">
+        <p id="clock"></p>
+        <p id="fps">60</p>
+        <ul class="train_types">
+            <li>Электрички:
+                <div id="blue"></div>
+            </li>
+            <li>Местного формирования:
+                <div id="green"></div>
+            </li>
+            <li>Транзит:
+                <div id="red"></div>
+            </li>
+            <li>Расформированные:
+                <div id="yellow"></div>
+            </li>
+            <li>Локомотивы:
+                <div id="orange"></div>
+            </li>
+            <li>Маневровые:
+                <div id="purple"></div>
+            </li>
+        </ul>
+        <input type="range" min="0" max="8.64e+7" step="1" value="540000" id="time_position" onChange="redraw(this.value);">
+        <br>
+        <!-- <input id="scaling" type="number" value="10" step="1"> -->
+        <input type="range" min="0" max="200" step="10" value="20" id="scaling">
+        <label for="scaling">Множитель времени</label>
+        <br>
+        <input type="checkbox" onClick="toggleLength(this.checked);" id="toggleLength" />
+        <label for="toggleCache">Отобразить длину дуги</label>
+    </div>
+    <canvas id="testCanvas"></canvas>
+
+</html>
