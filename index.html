@@ -200,7 +200,8 @@
         // // iterate through all the children and move them according to their velocity:
         for (var i = 0; i < l; i++) {
             var train_shape = stage.getChildAt(trainInstances[i].child_pos);
-            trainInstances[i].move(train_shape, elapsed, scaling);
+            var label_shape = stage.getChildAt(trainInstances[i].label_pos);
+            trainInstances[i].move(train_shape, label_shape,  elapsed, scaling);
         }
 
 

@@ -1,5 +1,4 @@
-﻿
-function load_points(data_points, stage) {
+﻿function load_points(data_points, stage) {
     for (var i = data_points.length - 1; i >= 0; i--) {
         addPoint(data_points[i].x, data_points[i].y, 10, "#000", data_points[i].title, stage);
     }
@@ -16,9 +15,7 @@ function load_trains(trainInstances, data_train, stage) {
     for (var i = data_train.length - 1; i >= 0; i--) {
         trainInstances.push(
             addTrain(
-                data_train[i].id,
-                -1000000000,
-                -1000000000,
+                data_train[i].id, -1000000000, -1000000000,
                 data_train[i].size,
                 data_train[i].type,
                 data_train[i].path,
@@ -77,8 +74,12 @@ function addTrain(id, x, y, size, type, path, stage) {
     stage.addChild(s);
     var num = stage.numChildren - 1;
 
+    var title = new createjs.Text("TMP", "bold 18px Arial", "#000");
+    title.x = -1000000000;
+    title.y = -1000000000;
+    stage.addChild(title);
 
-    return new Train(1, num, path, type);
+    return new Train(1, num, stage.numChildren - 1, path, type);
 }
 
 
@@ -96,9 +97,10 @@ var RIGHT_BORDER = 5894
 
 class Train {
 
-    constructor(id, child_pos, path, type) {
+    constructor(id, child_pos, label_pos, path, type) {
         this.id = id;
         this.child_pos = child_pos;
+        this.label_pos = label_pos;
         this.path = path;
         this.waypoint_index = 0;
         this.remain_length = 0;
@@ -117,63 +119,61 @@ class Train {
     }
 
     start_at_time(time) {
-    	for (var i = this.path.length - 1; i >= 0; i--) {
-    		var start_at = to_seconds(this.path[i].time1);
-    		var end_at = to_seconds(this.path[i].time2);
-    		if (time / 1000 > start_at && time / 1000 < end_at) {
-    			return [this.path[i].x1, this.path[i].y1]
-    		}
-    	}
-    	return [0, 0]
+        for (var i = this.path.length - 1; i >= 0; i--) {
+            var start_at = to_seconds(this.path[i].time1);
+            var end_at = to_seconds(this.path[i].time2);
+            if (time / 1000 > start_at && time / 1000 < end_at) {
+                return [this.path[i].x1, this.path[i].y1]
+            }
+        }
+        return [0, 0]
     }
 
     init_stop_waypoints() {
-    	var tmp = []
-    	for (var i = 0; i <= this.path.length - 2; i++) {
-    		var end_at_now = this.path[i].time2;
-    		var start_at_next = this.path[i + 1].time1;
-    		if (end_at_now != start_at_next && this.path[i].x2 > LEFT_BORDER && this.path[i].x2 < RIGHT_BORDER ) {
-    			tmp.push(i);
-    			// this.stop_waypoints.push(i);
-    		}
+        var tmp = []
+        for (var i = 0; i <= this.path.length - 2; i++) {
+            var end_at_now = this.path[i].time2;
+            var start_at_next = this.path[i + 1].time1;
+            if (end_at_now != start_at_next && this.path[i].x2 > LEFT_BORDER && this.path[i].x2 < RIGHT_BORDER) {
+                tmp.push(i);
+                // this.stop_waypoints.push(i);
+            }
 
-    	}
-    	return tmp;
+        }
+        return tmp;
     }
 
-    findWork(current_time)
-    {
-    	for (var i = this.path.length - 1; i >= 0; i--) {
-    		var start_at = to_seconds(this.path[i].time1);
-    		var end_at = to_seconds(this.path[i].time2);
-    		if (current_time > start_at && current_time < end_at) {
-    			this.waypoint_index = i;
-    		}
-    	}
-
-    }
-
-    findY(x, current_path)
-    {
-    	var dX = current_path.x1 - current_path.x2
-    	var k = 1
-    	if (dX != 0) {
-    		k = (current_path.y1 - current_path.y2) / dX
-    	}
-    	var b = current_path.y1 - k * current_path.x1
-
-    	return k*x + b
+    findWork(current_time) {
+        for (var i = this.path.length - 1; i >= 0; i--) {
+            var start_at = to_seconds(this.path[i].time1);
+            var end_at = to_seconds(this.path[i].time2);
+            if (current_time > start_at && current_time < end_at) {
+                this.waypoint_index = i;
+            }
+        }
 
     }
 
-    move(train_shape, t, scaling) {
-    	var second_elapsed = t / 1000;
-    	this.findWork(second_elapsed);
+    findY(x, current_path) {
+        var dX = current_path.x1 - current_path.x2
+        var k = 1
+        if (dX != 0) {
+            k = (current_path.y1 - current_path.y2) / dX
+        }
+        var b = current_path.y1 - k * current_path.x1
 
-    	var current_path = this.path[this.waypoint_index];
-    	var start_at = to_seconds(current_path.time1)
+        return k * x + b
+
+    }
+
+    move(train_shape, label_shape, t, scaling) {
+        var second_elapsed = t / 1000;
+        this.findWork(second_elapsed);
+
+        var current_path = this.path[this.waypoint_index];
+        var start_at = to_seconds(current_path.time1)
         var end_at = to_seconds(current_path.time2)
-        
+
 
         var deltaT = second_elapsed - start_at;
 
@@ -183,30 +183,39 @@ class Train {
         var s = Math.sqrt((vec_x * vec_x) + (vec_y * vec_y))
         var direction1 = vec_x / s
         var direction2 = vec_y / s
-        
+
         
         this.x = current_path.x1 + (vec_x / (end_at - start_at)) * deltaT;
-       	this.y = this.findY(this.x, current_path);
+        this.y = this.findY(this.x, current_path);
 
-       	
-		// if (current_path.time2 != to_seconds(this.path[this.waypoint_index + 1].time1)) {
-        	// train_shape.x = current_path.x2
-        	// train_shape.y =	current_path.y2
+
+        // if (current_path.time2 != to_seconds(this.path[this.waypoint_index + 1].time1)) {
+        // train_shape.x = current_path.x2
+        // train_shape.y =  current_path.y2
         // }
         var stop = (this.stop_waypoints.indexOf(this.waypoint_index) > -1); //true
-        
+
         if (second_elapsed >= start_at && second_elapsed <= end_at) {
-        	train_shape.x = this.x
-        	train_shape.y = this.y
+            train_shape.x = this.x
+            train_shape.y = this.y
+
+            //Маневровые
+            if (this.type == 6) {
+                label_shape.text = this.path.length - this.waypoint_index;
+                label_shape.x = this.x - 5
+                label_shape.y = this.y + 5
+            }
         }
 
 
 
 
 
-        if ((second_elapsed > end_at  && this.waypoint_index == this.path.length - 1) ||  (this.x < LEFT_BORDER || this.x > RIGHT_BORDER)  ) {
-        		train_shape.x = -1000000;
-        		train_shape.y = -1000000;
+        if ((second_elapsed > end_at && this.waypoint_index == this.path.length - 1) || (this.x < LEFT_BORDER || this.x > RIGHT_BORDER)) {
+            train_shape.x = -1000000;
+            train_shape.y = -1000000;
+            label_shape.x = -1000000;
+            label_shape.y = -1000000;
         }
 
     }
