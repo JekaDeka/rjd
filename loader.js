@@ -74,17 +74,24 @@ function addTrain(id, x, y, size, type, path, stage) {
     stage.addChild(s);
     var num = stage.numChildren - 1;
 
-    var title = new createjs.Text("TMP", "bold 18px Arial", "#000");
+    var title = new createjs.Text(id, "bold 18px Arial", "#000");
     title.x = -1000000000;
     title.y = -1000000000;
     stage.addChild(title);
 
-    return new Train(1, num, stage.numChildren - 1, path, type);
+    return new Train(id, num, stage.numChildren - 1, path, type);
 }
 
 
 function to_seconds(time_as_str) {
-    var a = time_as_str.split(':'); // split it at the colons
+    var time = time_as_str.split(' '); // split it at the colons
+    var date_part = time[0];
+    var time_part = time[1];
+    if (date_part == '2016-12-31') {
+        time_part = '00:00:00.000000';
+    }
+    
+    var a = time_part.split(':');
     // minutes are worth 60 seconds. Hours are worth 60 minutes.
     return (+a[0]) * 60 * 60 + (+a[1]) * 60 + (+a[2]);
 }
@@ -201,7 +208,7 @@ class Train {
 
             //Маневровые
             if (this.type == 6) {
-                label_shape.text = this.path.length - this.waypoint_index;
+                // label_shape.text = this.path.length - this.waypoint_index;
                 label_shape.x = this.x - 5
                 label_shape.y = this.y + 5
             }
