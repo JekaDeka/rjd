@@ -90,7 +90,7 @@ function to_seconds(time_as_str) {
     if (date_part == '2016-12-31') {
         time_part = '00:00:00.000000';
     }
-    
+
     var a = time_part.split(':');
     // minutes are worth 60 seconds. Hours are worth 60 minutes.
     return (+a[0]) * 60 * 60 + (+a[1]) * 60 + (+a[2]);
@@ -191,15 +191,14 @@ class Train {
         var direction1 = vec_x / s
         var direction2 = vec_y / s
 
-        
-        this.x = current_path.x1 + (vec_x / (end_at - start_at)) * deltaT;
-        this.y = this.findY(this.x, current_path);
+        if (end_at != start_at) {
+            this.x = current_path.x1 + (vec_x / (end_at - start_at)) * deltaT;
+            this.y = this.findY(this.x, current_path);
+        }
 
 
-        // if (current_path.time2 != to_seconds(this.path[this.waypoint_index + 1].time1)) {
-        // train_shape.x = current_path.x2
-        // train_shape.y =  current_path.y2
-        // }
+
+
         var stop = (this.stop_waypoints.indexOf(this.waypoint_index) > -1); //true
 
         if (second_elapsed >= start_at && second_elapsed <= end_at) {
